@@ -1,0 +1,23 @@
+{#
+/**
+ * @file
+ * Default theme implementation to display the checkout completion page.
+ *
+ * Available variables:
+ * - order: The order that was completed.
+ * - message: A message to display to the user.
+ * - front_page: The URL of the front page.
+ *
+ * @ingroup themeable
+#}
+<div class="account_center_page">
+
+<p class="your-order_has_ben_submitted">Your Order Has Ben Submitted</p>
+
+<p class="your_order_number">{{ 'Your order number is @number.'|t({'@number': order.id}) }} You can view your order in your Lee Spring Account Center. </p>
+
+
+<p class="order_front_page"><a href="{{ front_page }}">{{ 'Return to the front page.'|t }}</a></p>
+<p class="order_account_center"><a href="/account_center">{{ 'Account Center.'|t }}</a></p>
+</div>
+

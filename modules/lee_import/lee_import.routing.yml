@@ -1,0 +1,7 @@
+lee_import.admin_settings:
+  path: '/admin/config/content/lee_import'
+  defaults:
+    _form: 'Drupal\lee_import\Form\LeeImport'
+    _title: 'Lee Import'
+  requirements:
+    _permission: 'administer site configuration'

@@ -1,0 +1,81 @@
+<?php
+/**
+ * @file
+ * Provides the table schemas for volume pricing options.
+ */
+
+/**
+ * Define the 'lee_pricing' table structure.
+ *
+ * @return array
+ *   The schema which contains the structure for the
+ *   volume pricing module's tables.
+ */
+function lee_pricing_schema() {
+  $schema = array();
+  $schema['lee_pricing'] = array(
+    'description' => 'A table containing the volume pricing for products.',
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The primary identifier for a product.',
+      ),
+      'vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The version identifier for a product.',
+      ),
+      'min' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The minimum quantity range for a volume pricing entry.',
+      ),
+      'display_price_range' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'The price code.',
+      ),
+      'price' => array(
+        'type' => 'numeric',
+        'size' => 'normal',
+        'not null' => TRUE,
+        'default' => 0,
+        'precision' => 13,
+        'scale' => 3 ,
+        'description' => 'The price for a volume pricing entry.',
+      ),
+      'price_code' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'The price code.',
+      ),
+        'currency' => array(
+            'type' => 'varchar',
+            'length' => 32,
+            'not null' => TRUE,
+            'default' => '$',
+            'description' => 'Currency Symbol.',
+        ),
+        'stock_code' => array(
+            'type' => 'varchar',
+            'length' => 32,
+            'not null' => TRUE,
+            'default' => ' ',
+            'description' => 'SKU',
+        ),
+        
+    ),
+  );
+  return $schema;
+}

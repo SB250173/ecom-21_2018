@@ -1,0 +1,8 @@
+lee_pricing.admin_settings:
+  path: '/admin/store/settings/lee_pricing'
+  defaults:
+#    _controller: 'Drupal\lee_pricing\Controller\VolumePricingController::volumePricingSettings'
+    _title: 'Lee Pricing'
+#    'description: 'Configure the volume pricing module settings.'
+  requirements:
+    _permission: 'administer store'

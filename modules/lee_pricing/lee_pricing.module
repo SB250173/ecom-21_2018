@@ -1,0 +1,269 @@
+<?php
+
+/**
+ * @file
+ * Provides a volume (bulk) pricing option for Ubercart Products
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\node\NodeInterface;
+use Drupal\Core\Render\Element;
+
+
+/***
+ * list of node load operations
+ ***/
+function lee_pricing_node_load($nodes) {
+
+  //  $product_types = array_intersect(uc_product_types(), $types);
+  //
+  //  if (empty($product_types)) {
+  //    return;
+  //  }
+
+  foreach ($nodes as $node) {
+    if (uc_product_is_product($node->getType())) {
+      $node->volume_pricing = array();
+//      $results = db_query("SELECT * FROM {lee_pricing} WHERE nid=:nid AND vid=:vid ORDER BY min ASC", array(':nid' => $node->nid, ':vid' => $node->vid));
+
+      $results=\Drupal::database()->select('lee_pricing', 'x')
+        ->fields('x', array())
+        ->condition('x.nid', $node->nid->value, '=')
+        ->execute()
+        ->fetchAll(\PDO::FETCH_OBJ);
+
+      $i = 0;
+      foreach ($results as $volume_set) {
+        $node->volume_pricing[$i]['min'] = $volume_set->min;
+        $node->volume_pricing[$i]['display_price_range'] = $volume_set->display_price_range;
+        $node->volume_pricing[$i]['price'] = $volume_set->price;
+        $node->volume_pricing[$i]['price_code'] = $volume_set->price_code;
+        $node->volume_pricing[$i]['currency'] = $volume_set->currency;
+        $node->volume_pricing[$i]['stock_code'] = $volume_set->stock_code;
+        $i++;
+      }
+    }
+  }
+}
+
+
+
+
+
+/***
+* DB operations
+***/
+
+
+function lee_pricing_node_insert($node) {
+  lee_pricing_node_update($node);
+}
+
+function lee_pricing_node_update($node) {
+  $nodeBundle = $node->bundle();
+  if (uc_product_is_product($nodeBundle)) {
+    if (empty($node->revision)) {
+      \Drupal::database()
+        ->delete('lee_pricing')
+        ->condition('vid', $node->vid->value)
+        ->execute();
+    }
+    foreach ($node->lee_pricing as $volume_set) {
+      if (isset($volume_set['min']) && $volume_set['min'] > 0) {
+        \Drupal::database()->insert('lee_pricing')
+          ->fields(array(
+            'nid' => intval($node->id()),
+            'vid' => intval($node->vid->value),
+            'min' => $volume_set['min'],
+            'display_price_range' => $volume_set['display_price_range'],
+            'price' => $volume_set['price'],
+            'price_code' => $volume_set['price_code'],
+            'currency' => $volume_set['currency'],
+            'stock_code' => $volume_set['stock_code'],
+          ))
+          ->execute();
+      }
+    }
+  }
+}
+
+function lee_pricing_node_delete($node) {
+  \Drupal::database()
+    ->delete('lee_pricing')
+    ->condition('nid', $node->id())
+    ->execute();
+}
+
+function lee_pricing_node_revision_delete($node) {
+  \Drupal::database()
+    ->delete('lee_pricing')
+    ->condition('vid', $node->vid())
+    ->execute();
+}
+
+
+
+ /***
+ * on form load operations
+ ***/
+function lee_pricing_form_node_form_alter(&$form, FormStateInterface $form_state) {
+  $node = $form_state->getFormObject()->getEntity();
+  $nodeBundle = $node->bundle();
+  if (uc_product_is_product($nodeBundle)) {
+    $form['lee_pricing'] = [
+      '#type' => 'fieldset',
+      '#tree' => TRUE,
+      '#title' => t('Volume Pricing'),
+      '#prefix' => '<div id="volume-pricing-wrapper">',
+      '#suffix' => '</div>',
+      '#weight' => 99,
+    ];
+    $vid = $node->vid->value;
+    $nid = $node->id();
+
+    $count = 0;
+    $result = db_query("SELECT * FROM {lee_pricing} WHERE nid=:nid AND vid=:vid ORDER BY min ASC", array(':nid' => $nid, ':vid' => $vid))->fetchAll();
+    foreach ($result as $volume_set) {
+      $form['lee_pricing']['volume-set' . $count] = [
+        '#type' => 'fieldset',
+        '#title' => 'Option ' . ($count + 1),
+        '#tree' => TRUE,
+      ];
+      $form['lee_pricing']['volume-set' . $count]['min'] = [
+        '#type' => 'textfield',
+        '#title' => 'Min Quantity',
+        '#default_value' => $volume_set->min,
+      ];
+      $form['lee_pricing']['volume-set' . $count]['display_price_range'] = [
+        '#type' => 'textfield',
+        '#title' => 'Display Price Range',
+        '#default_value' => $volume_set->display_price_range,
+      ];
+      $form['lee_pricing']['volume-set' . $count]['price'] = [
+        '#type' => 'textfield',
+        '#title' => 'Price Each',
+        '#default_value' => $volume_set->price,
+      ];
+      $form['lee_pricing']['volume-set' . $count]['price_code'] = [
+        '#type' => 'textfield',
+        '#title' => 'Price Code',
+        '#default_value' => $volume_set->price_code,
+      ];
+      $form['lee_pricing']['volume-set' . $count]['currency'] = [
+          '#type' => 'textfield',
+          '#title' => 'currency Type',
+          '#default_value' => $volume_set->currency,
+      ];
+      
+
+      $count++;
+    }
+    $volumeFields = $form_state->get('volume_fields');
+    if (empty($volumeFields)) {
+      $volumeFields = ($count > 0) ? $count : 1;
+      $form_state->set('volume_fields', $volumeFields);
+    }
+
+    for ($i = $count; $i < $volumeFields; $i++) {
+      $form['lee_pricing']['volume-set' . $i] = [
+        '#type' => 'fieldset',
+        '#title' => 'Option ' . ($i + 1),
+        '#tree' => TRUE,
+      ];
+      $form['lee_pricing']['volume-set' . $i]['min'] = [
+        '#type' => 'textfield',
+        '#title' => 'Min Quantity',
+      ];
+      $form['lee_pricing']['volume-set' . $i]['display_price_range'] = [
+        '#type' => 'textfield',
+        '#title' => 'Display Price Range',
+      ];
+      $form['lee_pricing']['volume-set' . $i]['price'] = [
+        '#type' => 'textfield',
+        '#title' => 'Price Each',
+      ];
+      $form['lee_pricing']['volume-set' . $i]['price_code'] = [
+        '#type' => 'textfield',
+        '#title' => 'Price Code',
+      ];
+      $form['lee_pricing']['volume-set' . $i]['currency'] = [
+          '#type' => 'textfield',
+          '#title' => 'Currency Type',
+      ];
+    }
+
+    $form['lee_pricing']['add_item'] = [
+      '#type' => 'submit',
+      '#value' => t('Add Another Item'),
+      '#submit' => ['lee_pricing_add_item'],
+      '#ajax' => [
+        'callback' => 'lee_pricing_ajax_callback',
+        'wrapper' => 'volume-pricing-wrapper',
+      ],
+    ];
+    $form['#entity_builders'][] = 'lee_pricing_node_builder';
+  }
+}
+
+
+/**
+Add new slab operations
+ **/
+function lee_pricing_node_builder($entity_type, NodeInterface $entity, &$form, FormStateInterface $form_state) {
+  $node = $form_state->getFormObject()->getEntity();
+  $nodeBundle = $node->bundle();
+  if (uc_product_is_product($nodeBundle)) {
+    $volumePricing = $form_state->getValue('lee_pricing');
+
+    $node->lee_pricing = array();
+    $i = 0;
+    while (!empty($volumePricing['volume-set' . $i])) {
+      $entity->lee_pricing[$i]['min'] = $volumePricing['volume-set' . $i]['min'];
+      $entity->lee_pricing[$i]['display_price_range'] = $volumePricing['volume-set' . $i]['display_price_range'];
+      $entity->lee_pricing[$i]['price'] = $volumePricing['volume-set' . $i]['price'];
+      $entity->lee_pricing[$i]['price_code'] = $volumePricing['volume-set' . $i]['price_code'];
+      $entity->lee_pricing[$i]['currency'] = $volumePricing['volume-set' . $i]['currency'];
+      $i++;
+    }
+  }
+}
+
+function lee_pricing_ajax_callback(&$form, FormStateInterface $form_state) {
+  return $form['lee_pricing'];
+}
+
+
+function lee_pricing_add_item(&$form, FormStateInterface $form_state) {
+  $volumeFields = $form_state->get('volume_fields');
+  $form_state->set('volume_fields', ($volumeFields+1));
+  $form_state->setRebuild();
+}
+
+
+
+/**
+*cart operations
+**/
+// function lee_pricing_form_uc_cart_view_form_alter(&$form, FormStateInterface $form_state) {
+//   echo "yes";
+// }
+
+
+function lee_pricing_uc_cart_checkout_start($order) {
+ // $updated = FALSE;
+ // $productArray = $order->products;
+ // foreach ($productArray as $key => $product) {
+ //   $node = $product->nid->entity;
+ //   $nid = $node->nid->value;
+ //   $vid = $node->vid->value;
+ //   $volume_price = db_query("SELECT price FROM {lee_pricing} WHERE nid=:nid AND vid=:vid AND min <= :min ORDER BY price ASC LIMIT 1", array(':nid' => $nid, ':vid' => $vid, ':min' => $order->products[$key]->qty->value))->fetchField();
+ //   if ($volume_price > 0) {
+ //     $order->products[$key]->price->value = $volume_price;
+ //     $updated = TRUE;
+ //   }
+ // }
+ // // Updating Order for affecting variable price.
+ // if ($updated) {
+ //   $order->save();
+ // }
+}
